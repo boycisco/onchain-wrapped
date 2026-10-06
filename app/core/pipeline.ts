@@ -101,7 +101,12 @@ export async function runPipeline(
         traits: identity.traits,
       },
     },
-    options.roast ?? {},
+    {
+      ...(options.roast ?? {}),
+      forceFallback:
+        (options.roast?.forceFallback ?? false) ||
+        process.env.FORCE_ROAST_FALLBACK === '1',
+    },
   );
   const roastMs = Date.now() - tRoast;
 

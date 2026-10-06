@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Domain errors used across the pipeline.
  * Provider-specific errors are translated into these before leaving app/data.
  */
@@ -8,7 +8,7 @@ export class AppError extends Error {
     message: string,
     public readonly code: string,
   ) {
-    super(message)
+    super(message);
     this.name = new.target.name;
   }
 }
@@ -40,5 +40,67 @@ export class ProviderError extends AppError {
     public readonly cause?: unknown,
   ) {
     super(message, 'PROVIDER_ERROR');
+  }
+}
+
+/* ---------- API error serialization ---------- */
+
+export type ApiErrorCode =
+  | 'INVALID_WALLET'
+  | 'INVALID_RANGE'
+  | 'PROVIDER_ERROR'
+  | 'RATE_LIMITED'
+  | 'DATA_UNAVAILABLE'
+  | 'ANALYSIS_ERROR'
+  | 'CONFIG_ERROR'
+  | 'INTERNAL_ERROR';
+
+export type ApiError = {
+  status: number;
+  body: {
+    error: {
+      code: ApiErrorCode;
+      message: string;
+    };
+  };
+};
+
+/**
+ * Turn any thrown value into a stable HTTP status + JSON body.
+ * Never leaks provider errors, stack traces, or secrets.
+ */
+export function toApiError(err: unknown): ApiError {
+  if (err instanceof AppError) {
+    const code = err.code as ApiErrorCode;
+    const status = statusFor(code);
+    return {
+      status,
+      body: { error: { code, message: err.message } },
+    };
+  }
+  return {
+    status: 500,
+    body: {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Unexpected error.',
+      },
+    },
+  };
+}
+
+function statusFor(code: ApiErrorCode): number {
+  switch (code) {
+    case 'INVALID_WALLET':
+    case 'INVALID_RANGE':
+      return 400;
+    case 'CONFIG_ERROR':
+    case 'INTERNAL_ERROR':
+    case 'ANALYSIS_ERROR':
+      return 500;
+    case 'PROVIDER_ERROR':
+    case 'RATE_LIMITED':
+    case 'DATA_UNAVAILABLE':
+      return 502;
   }
 }
