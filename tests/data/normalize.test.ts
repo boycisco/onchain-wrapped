@@ -100,3 +100,43 @@ describe('groupTransactions', () => {
     }
   });
 });
+
+
+describe('normalizeTransfers - real Alchemy shapes', () => {
+  const real = loadFixture('alchemy-real-shape.json');
+  const all = normalizeTransfers(real.transfers ?? [], WALLET);
+
+  it('handles null value / decimal / asset on ERC721', () => {
+    const nft = all.find((t) => t.category === 'erc721')!;
+    expect(nft).toBeDefined();
+    expect(nft.value).toBe(1n);
+    expect(nft.decimals).toBe(0);
+    expect(nft.asset).toBeNull();
+    expect(nft.contractAddress?.toLowerCase()).toBe(
+      '0x03ee701d8c5762ae401e4f8aae38613ac85dce86',
+    );
+  });
+
+  it('handles standard external ETH transfer', () => {
+    const eth = all.find((t) => t.category === 'external')!;
+    expect(eth.value).toBe(50_000_000_000_000_000n); // 0.05 ETH
+    expect(eth.decimals).toBe(18);
+    expect(eth.asset).toBe('ETH');
+    expect(eth.direction).toBe('out');
+  });
+
+  it('handles ERC20 with full 32-byte tokenId fields absent', () => {
+    const erc20 = all.find((t) => t.category === 'erc20')!;
+    expect(erc20.value).toBe(42_500_000n); // 42.5 USDC at 6 decimals
+    expect(erc20.decimals).toBe(6);
+    expect(erc20.asset).toBe('USDC');
+    expect(erc20.direction).toBe('in');
+  });
+
+  it('uses Alchemy uniqueId verbatim when provided', () => {
+    const nft = all.find((t) => t.category === 'erc721')!;
+    expect(nft.uniqueId).toBe(
+      '0xdead2fee2e318b80e49b81ad36e174670ddecde7d003133bf16a8158c153ecbc:log:457',
+    );
+  });
+});
