@@ -15,14 +15,28 @@ export type Indexer = {
   transfers(wallet: Address, range: Range): Promise<Transfer[]>;
 };
 
-// Simple test seam. Real factory (getIndexer) is added in Step 4b
-// once the Alchemy adapter exists.
+/* ---------- Test seam ---------- */
+
 let override: Indexer | null = null;
 
 export function setIndexerForTesting(indexer: Indexer | null): void {
   override = indexer;
 }
 
-export function getIndexerOverride(): Indexer | null {
-  return override;
+/* ---------- Production factory ---------- */
+
+let cached: Indexer | null = null;
+
+/**
+ * Return the configured Indexer. Lazily constructed so that importing this
+ * module does not require env or network access. In tests, prefer
+ * setIndexerForTesting() to avoid touching the real provider.
+ */
+export function getIndexer(): Indexer {
+  if (override) return override;
+  if (cached) return cached;
+  // Lazy import to avoid pulling Alchemy into non-network test files.
+  const { createAlchemyIndexer } = require('./alchemy') as typeof import('./alchemy');
+  cached = createAlchemyIndexer();
+  return cached;
 }
