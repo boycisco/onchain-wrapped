@@ -118,7 +118,14 @@ describe('runPipeline - end to end', () => {
     expect(wrapped.roast.lines.length).toBeLessThanOrEqual(5);
 
     expect(wrapped.highlights).toEqual([]);
-    expect(wrapped.cards).toEqual([]);
+    // Cards are populated by the pipeline (Step 12).
+    expect(wrapped.cards.length).toBeGreaterThan(0);
+    const cardIds = wrapped.cards.map((c) => c.id);
+    expect(cardIds).toContain('activity');
+    expect(cardIds).toContain('identity');
+    expect(cardIds).toContain('timing');
+    expect(cardIds).toContain('money');
+    expect(cardIds).toContain('roast');
   });
 
   it('reports timings for every stage', async () => {

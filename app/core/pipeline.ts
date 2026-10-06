@@ -15,6 +15,8 @@ import { analyzeBehavior } from '@/app/analysis/behavior';
 import { classify } from '@/app/identity/score';
 import { generateRoast, type GenerateOptions } from '@/app/roast/generator';
 
+import { buildCards } from '@/app/cards/build';
+
 /** Cache TTL for a fully-composed Wrapped. Short enough to stay fresh. */
 export const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -142,6 +144,7 @@ export async function runPipeline(
     roast,
     generatedAt: now,
   });
+  wrapped.cards = buildCards(wrapped);
 
   const total = Date.now() - t0;
 
