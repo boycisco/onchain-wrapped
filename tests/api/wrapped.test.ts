@@ -3,6 +3,7 @@ import { POST } from '@/app/api/wrapped/route';
 import { setIndexerForTesting, type Indexer } from '@/app/data/indexer';
 import type { Address, Transfer } from '@/app/core/models';
 import { WALLET } from '../fixtures/build';
+import { setCacheForTesting } from '@/app/core/cache';
 
 /* ---------- fixture indexer ---------- */
 
@@ -52,12 +53,14 @@ describe('POST /api/wrapped', () => {
   beforeEach(() => {
     indexer = { transfers: async () => FIXTURE };
     setIndexerForTesting(indexer);
+    setCacheForTesting(null); // fresh cache for every test
     // Force the roast fallback path so tests never call Gemini.
     process.env.FORCE_ROAST_FALLBACK = '1';
   });
 
   afterEach(() => {
     setIndexerForTesting(null);
+    setCacheForTesting(null);
     delete process.env.FORCE_ROAST_FALLBACK;
   });
 

@@ -7,10 +7,6 @@ import type { BehaviorScores } from '@/app/analysis/behavior';
 import type { Identity } from '@/app/identity/types';
 import type { Roast } from '@/app/roast/types';
 
-/**
- * Bumped whenever the Wrapped contract changes in a way that would invalidate
- * cached results or downstream consumers.
- */
 export const WRAPPED_SCHEMA_VERSION = 1;
 
 /** Placeholder shape. Filled in by a later highlights pass. */
@@ -18,6 +14,16 @@ export type Highlight = { type: string } & Record<string, unknown>;
 
 /** Placeholder shape. Filled in by a later card-spec pass. */
 export type Card = { type: string; title: string } & Record<string, unknown>;
+
+/**
+ * The Wrapped is a JSON document, so its date fields are ISO strings, not
+ * Date objects. This makes the wire format, the cached format, and the type
+ * exactly the same shape. Internal types (Range) keep Date objects.
+ */
+export type SerializedRange = {
+  start: string; // ISO 8601 UTC
+  end: string;   // ISO 8601 UTC
+};
 
 export type WrappedStats = {
   activity: ActivityStats;
@@ -28,7 +34,7 @@ export type WrappedStats = {
 export type Wrapped = {
   schemaVersion: number;
   wallet: Address;
-  range: Range;
+  range: SerializedRange;
   stats: WrappedStats;
   money: MoneyStats;
   behavior: BehaviorScores;
@@ -36,7 +42,7 @@ export type Wrapped = {
   roast: Roast;
   highlights: Highlight[];
   cards: Card[];
-  generatedAt: string;
+  generatedAt: string; // ISO 8601 UTC
 };
 
 export type ComposeInput = {
@@ -54,15 +60,14 @@ export type ComposeInput = {
   generatedAt: Date;
 };
 
-/**
- * Assemble the canonical Wrapped object from the pipeline outputs.
- * Pure function: everything it needs is passed in.
- */
 export function composeWrapped(input: ComposeInput): Wrapped {
   return {
     schemaVersion: WRAPPED_SCHEMA_VERSION,
     wallet: input.wallet,
-    range: input.range,
+    range: {
+      start: input.range.start.toISOString(),
+      end: input.range.end.toISOString(),
+    },
     stats: {
       activity: input.activity,
       contracts: input.contracts,
