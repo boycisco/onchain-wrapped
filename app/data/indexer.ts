@@ -1,4 +1,4 @@
-﻿import type { Address, Range, Transfer } from '@/app/core/models';
+import type { Address, Range, Transfer } from '@/app/core/models';
 
 /**
  * The boundary between "where data comes from" and "what we do with it".
@@ -28,15 +28,14 @@ export function setIndexerForTesting(indexer: Indexer | null): void {
 let cached: Indexer | null = null;
 
 /**
- * Return the configured Indexer. Lazily constructed so that importing this
- * module does not require env or network access. In tests, prefer
+ * Return the configured Indexer. Async so we can use dynamic import() rather
+ * than require(), which does not exist in ESM. In tests, prefer
  * setIndexerForTesting() to avoid touching the real provider.
  */
-export function getIndexer(): Indexer {
+export async function getIndexer(): Promise<Indexer> {
   if (override) return override;
   if (cached) return cached;
-  // Lazy import to avoid pulling Alchemy into non-network test files.
-  const { createAlchemyIndexer } = require('./alchemy') as typeof import('./alchemy');
+  const { createAlchemyIndexer } = await import('./alchemy');
   cached = createAlchemyIndexer();
   return cached;
 }
