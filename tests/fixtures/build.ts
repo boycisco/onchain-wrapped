@@ -72,8 +72,10 @@ export function txsOnDay(
 ): Transaction[] {
   const out: Transaction[] = [];
   for (let i = 0; i < count; i++) {
-    const h = `0x${date.replace(/-/g, '')}${String(i).padStart(4, '0')}${'0'.repeat(56)}`.slice(0, 66);
-    out.push(tx(h, at(date, hour, i), status));
+    const h = (hour + Math.floor(i / 60)) % 24;
+    const m = i % 60;
+    const hash = `0x${date.replace(/-/g, '')}${String(i).padStart(4, '0')}${'0'.repeat(56)}`.slice(0, 66);
+    out.push(tx(hash, at(date, h, m), status));
   }
   return out;
 }
