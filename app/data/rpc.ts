@@ -20,7 +20,7 @@ export function getRpcClient(): PublicClient {
       retryDelay: 250,
       timeout: 10_000,
     }),
-  });
+  }) as unknown as PublicClient;
   return cached;
 }
 
