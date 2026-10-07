@@ -199,3 +199,59 @@ describe('generateRoast - line count', () => {
     }
   });
 });
+
+
+describe('validateRoastOutput - leading marker handling', () => {
+  const facts = 'Total transactions: 42 Active days: 5';
+
+  it('strips numbered list markers with a dot', () => {
+    expect(validateRoastOutput('1. First.\n2. Second.', facts)).toEqual([
+      'First.',
+      'Second.',
+    ]);
+  });
+
+  it('strips numbered list markers with a paren', () => {
+    expect(validateRoastOutput('1) First.\n2) Second.', facts)).toEqual([
+      'First.',
+      'Second.',
+    ]);
+  });
+
+  it('strips dash, asterisk, and bullet markers', () => {
+    expect(validateRoastOutput('- First.\n* Second.\n\u2022 Third.', facts)).toEqual([
+      'First.',
+      'Second.',
+      'Third.',
+    ]);
+  });
+
+  it('does NOT strip leading digits that are part of the content', () => {
+    // "42" is a fact and belongs to the sentence.
+    const out = validateRoastOutput('42 transactions is a lot.', facts);
+    expect(out).toEqual(['42 transactions is a lot.']);
+  });
+
+  it('rejects fabricated 3+ digit numbers at the start of a line', () => {
+    // "123" is not in the facts.
+    const out = validateRoastOutput('123 things happened onchain.', facts);
+    expect(out).toBeNull();
+  });
+
+  it('anti-fabrication check runs BEFORE marker stripping', () => {
+    // Regression: the old code stripped leading digits first, so a fabricated
+    // number at the start of a line vanished before the numeric check ran.
+    const out = validateRoastOutput('123. of your transactions were silly.', facts);
+    expect(out).toBeNull();
+  });
+
+  it('preserves content when a line has no marker', () => {
+    const out = validateRoastOutput('You had a busy year.', facts);
+    expect(out).toEqual(['You had a busy year.']);
+  });
+
+  it('handles empty-after-strip lines by dropping them', () => {
+    const out = validateRoastOutput('1.  \nReal content.', facts);
+    expect(out).toEqual(['Real content.']);
+  });
+});

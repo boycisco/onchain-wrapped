@@ -15,35 +15,50 @@ export type GenerateOptions = {
 };
 
 /**
- * Validate raw model output:
+ * Validate raw model output.
+ *
  *  - split on newlines, trim, drop empties
+ *  - run the anti-fabrication check on the RAW lines, before any stripping
+ *  - strip only genuine list markers (`1. `, `2) `, `- `, `* `, bullets)
  *  - cap to MAX_LINES
  *  - require between MIN_LINES and MAX_LINES
- *  - reject if any numeric token (3+ digits) is not present in the prompt facts
- * Returns lines or null if invalid.
+ *
+ * Order matters: if we stripped before checking, a fabricated number at the
+ * start of a line (e.g. "87% of your transactions...") would be erased and
+ * the fabrication check would pass silently.
  */
 export function validateRoastOutput(
   raw: string,
   promptFacts: string,
 ): string[] | null {
   if (!raw) return null;
-  // Strip leading bullets ("-", "*", "\u2022") and numbering ("1.", "1)").
-  const strip = /^[\s\-\*\u2022\d.)]+/;
-  const lines = raw
+
+  const rawLines = raw
     .split(/\r?\n/)
-    .map((s) => s.replace(strip, '').trim())
+    .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-  if (lines.length < MIN_LINES) return null;
-  const capped = lines.slice(0, MAX_LINES);
+  if (rawLines.length < MIN_LINES) return null;
 
-  // Anti-fabrication: any 3+ digit number must appear in the prompt.
-  const numericTokens = capped.join(' ').match(/\d{3,}/g) ?? [];
+  const cappedRaw = rawLines.slice(0, MAX_LINES);
+
+  // Anti-fabrication runs on the raw lines, BEFORE stripping markers.
+  const numericTokens = cappedRaw.join(' ').match(/\d{3,}/g) ?? [];
   for (const tok of numericTokens) {
     if (!promptFacts.includes(tok)) return null;
   }
 
-  return capped;
+  // Strip only real list markers: optional leading space, then a bullet
+  // char OR digits followed by `.`/`)`, then whitespace.
+  // This does NOT strip a leading standalone number like "87% ..." because
+  // that number is content, not a marker.
+  const marker = /^\s*(?:[-*\u2022]|\d+[.)])(?:\s+|$)/;
+  const stripped = cappedRaw
+    .map((s) => s.replace(marker, '').trim())
+    .filter((s) => s.length > 0);
+
+  if (stripped.length < MIN_LINES) return null;
+  return stripped;
 }
 
 async function defaultCallModel(prompt: string): Promise<string> {

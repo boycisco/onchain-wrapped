@@ -207,3 +207,27 @@ interface in `app/core/cache.ts` without changing API consumers.
       -d "{\"wallet\":\"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\",\"range\":\"year\"}"
 
 (Windows `cmd`. On PowerShell, use `Invoke-RestMethod`.)
+
+
+---
+
+## Inspecting responses from PowerShell
+
+Windows PowerShell 5.1 (and even PowerShell 7 in some terminals) may display
+non-ASCII characters in JSON responses incorrectly, because
+`Invoke-RestMethod` decodes the response body using the console codepage
+rather than UTF-8. You may see `â¦` instead of `…`, or other mojibake.
+
+**This is a client-side display issue, not a server issue.** The API always
+responds with `Content-Type: application/json; charset=utf-8` and UTF-8
+bytes. Browsers, Node clients, `curl.exe`, and Postman read it correctly.
+
+To inspect responses byte-accurately from Windows, use:
+
+    curl.exe -s -X POST http://localhost:3000/api/wrapped ^
+      -H "Content-Type: application/json" ^
+      -d "{\"wallet\":\"0x...\"}"
+
+Or set the PowerShell output encoding first:
+
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
