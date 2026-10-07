@@ -1,6 +1,0 @@
-{
-  "name": "Onchain Wrapped",
-  "description": "Spotify Wrapped for your Base wallet. Discover your onchain personality, activity stats, timing quirks, roasts, and head-to-head comparisons.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
