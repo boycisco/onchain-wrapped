@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { toPng } from 'html-to-image';
 import { WrappedData } from '@/lib/types';
 import { formatAddress, formatNumber } from '@/lib/format';
-import { Share2, Swords, RefreshCw, Check } from 'lucide-react';
+import { Share2, Swords, RefreshCw, Check, Download } from 'lucide-react';
 
 interface ShareProps {
   data: WrappedData;
@@ -14,8 +15,11 @@ interface ShareProps {
 
 export function ShareSummaryCard({ data, onOpenCompare, onRestart }: ShareProps) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
+  const [savedImage, setSavedImage] = useState(false);
+  const posterRef = useRef<HTMLDivElement | null>(null);
 
-  const shareText = `My Base Onchain Wrapped: ${data.identity.name} (${data.identity.score}/100) — ${formatNumber(data.activity.transactions)} moves across ${data.activity.activeDays} days.`;
+  const shareText = `My Base Onchain Wrapped: ${data.identity.name} (${data.identity.score}/100) - ${formatNumber(data.activity.transactions)} moves across ${data.activity.activeDays} days.`;
 
   const handleShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -40,10 +44,43 @@ export function ShareSummaryCard({ data, onOpenCompare, onRestart }: ShareProps)
     }
   };
 
+  const handleSaveImage = async () => {
+    if (!posterRef.current || savingImage) return;
+    setSavingImage(true);
+    setSavedImage(false);
+    try {
+      // Snapshot the poster as a 2x-resolution PNG with an explicit black
+      // background (the poster is on a dark surface; html-to-image defaults
+      // to transparent, which looks broken when shared in chat apps).
+      const dataUrl = await toPng(posterRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#000000',
+      });
+
+      const filename = `onchain-wrapped-${data.wallet.slice(2, 8)}-${data.range}.png`;
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setSavedImage(true);
+      setTimeout(() => setSavedImage(false), 2000);
+    } catch (err) {
+      console.error('Failed to save poster image', err);
+      // Do not surface raw error to user; toast-like inline feedback is enough.
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto space-y-6">
       {/* Poster Summary */}
       <motion.div
+        ref={posterRef}
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -102,18 +139,41 @@ export function ShareSummaryCard({ data, onOpenCompare, onRestart }: ShareProps)
       <div className="space-y-2">
         <button
           type="button"
+          onClick={handleSaveImage}
+          disabled={savingImage}
+          className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-zinc-200 active:bg-zinc-300 text-black font-mono font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors disabled:opacity-60 min-h-[46px]"
+        >
+          {savedImage ? (
+            <>
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>IMAGE SAVED</span>
+            </>
+          ) : savingImage ? (
+            <>
+              <span>RENDERING...</span>
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              <span>SAVE IMAGE</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
           onClick={handleShare}
-          className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-zinc-200 active:bg-zinc-300 text-black font-mono font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors min-h-[46px]"
+          className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 font-mono text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors min-h-[44px]"
         >
           {copiedLink ? (
             <>
-              <Check className="w-4 h-4 text-emerald-600" />
+              <Check className="w-4 h-4 text-emerald-500" />
               <span>LINK COPIED</span>
             </>
           ) : (
             <>
-              <Share2 className="w-4 h-4" />
-              <span>SHARE WRAPPED</span>
+              <Share2 className="w-4 h-4 text-zinc-400" />
+              <span>SHARE LINK</span>
             </>
           )}
         </button>
